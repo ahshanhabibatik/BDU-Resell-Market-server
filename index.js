@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tqyfr7x.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -28,17 +28,18 @@ async function run() {
 
     await client.connect();
 
-
+    // database collection
     const userCollection = client.db("Resell_store").collection("users");
 
 
     // user post 
 
     app.post('/users', async (req, res) => {
-      const users = req.body;
-      const result = await userCollection.insertOne(users);
-      res.send(result);
-    })
+      const newUser = req.body;
+      const result = await userCollection.insertOne(newUser);
+      res.status(201).json(result);
+    });
+
 
     // get users
 
@@ -58,6 +59,47 @@ async function run() {
         res.status(404).send({ message: "User not found" });
       }
     });
+
+
+    // DashBoard Control ...............................
+
+    app.get('/users/admin/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.Role === 'admin';
+      }
+      res.send({ admin });
+    })
+
+
+    // manage user role
+
+    app.patch('/users/role/:id', async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          Role: role,
+        },
+      };
+
+      const result = await userCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    })
+
+
+
 
 
 
